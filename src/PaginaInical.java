@@ -5,7 +5,9 @@ public class PaginaInical {
         SwingUtilities.invokeLater(new Runnable() {
             @Override
             public void run() {
-                new TempoGUI().setVisible(true);
+                //new TempoGUI().setVisible(true);
+
+                System.out.println(TempoBack.getLocationData("Tokyo"));
             }
         });
     }
