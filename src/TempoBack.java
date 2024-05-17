@@ -2,7 +2,6 @@ import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
 
-
 import java.io.IOException;
 import java.net.HttpURLConnection;
 import java.net.URL;
@@ -10,74 +9,77 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Scanner;
 
-//BACJ
+
 public class TempoBack {
+    // fetch weather data for given location
     public static JSONObject getWeatherData(String locationName){
-        //pegar as coorddenadas e fazer a geolocalização
+        // obter coordenadas de localização usando a API de geolocalização
         JSONArray locationData = getLocationData(locationName);
 
-        //EXTRAIR A DATA DA LONGITUDE E LATITUDE
+        // extrair dados de latitude e longitude
         JSONObject location = (JSONObject) locationData.get(0);
         double latitude = (double) location.get("latitude");
         double longitude = (double) location.get("longitude");
 
-        //CONSTRUINDO API PARA FAZER REQUEST DO URL COM COORDENADA DA LOCALIDADE
+        // construir URL de solicitação de API com coordenadas de localização
         String urlString = "https://api.open-meteo.com/v1/forecast?" +
-                "latitude=" + latitude +"&longitude=" + longitude +
-                "&hourly=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m&timezone=America%2FLos_Angeles";
+                "latitude=" + latitude + "&longitude=" + longitude +
+                "&hourly=temperature_2m,relativehumidity_2m,weathercode,windspeed_10m&timezone=America%2FLos_Angeles";
+
         try{
-            //CHAMAR A API E CONSEGUIR A RESPOSTA
+            // ligue para a API e obtenha resposta
             HttpURLConnection conn = fetchApiResponse(urlString);
 
-            //VERIFICAR O STATUS DA RESPOSTA
-            //200 - SIGINIFICA QUE FOI CONECTADO COM SUCESSO
-            if (conn.getResponseCode() != 200){
-                System.out.println("Error: Não foi possivel conectar a API");
+
+            // 200 -SIGNIFICA QUE FOI CONECTADO COM SUCESSO
+            if(conn.getResponseCode() != 200){
+                System.out.println("Error: Could not connect to API");
                 return null;
             }
 
-            //ARMAZENAR OS DADOS DO JSON
+            // armazenar dados JSON resultantes
             StringBuilder resultJson = new StringBuilder();
-            Scanner scan = new Scanner(conn.getInputStream());
-            while (scan.hasNext()){
-                //LER E ARMAZENAR ENTRADAS DO STRING BUILDER
-                resultJson.append(scan.nextLine());
+            Scanner scanner = new Scanner(conn.getInputStream());
+            while(scanner.hasNext()){
+                // read and store into the string builder
+                resultJson.append(scanner.nextLine());
             }
 
-            //LIMPAR SCANNER
-            scan.close();
 
-            //FECHAR A CONEXÃO DA URL
+            scanner.close();
+
+            // FECHA CONEXÃO COM A URL
             conn.disconnect();
 
-            //ANALISE DOS DADOS
+            // ANALISA OS DADOS
             JSONParser parser = new JSONParser();
             JSONObject resultJsonObj = (JSONObject) parser.parse(String.valueOf(resultJson));
 
-            //RECUPERAR DADOS DO HORARIO
+            // RECUPERAR DADOS POR HORA
             JSONObject hourly = (JSONObject) resultJsonObj.get("hourly");
 
-            //QUEREMOS OBTER OS DADOS DA HORA ATUAL
+            // OBTER DADOS ATUAIS
+            // OBTER O INDICE ATUAL
             JSONArray time = (JSONArray) hourly.get("time");
             int index = findIndexOfCurrentTime(time);
 
-            //PEGAR TEMPERATURA
+            // PEGRA TEMPERATURE
             JSONArray temperatureData = (JSONArray) hourly.get("temperature_2m");
             double temperature = (double) temperatureData.get(index);
 
-            //PEGAR O CÓDIGO METEOROLOGICO
+            // PEGAR O CODIGO CLIMATICO
             JSONArray weathercode = (JSONArray) hourly.get("weathercode");
             String weatherCondition = convertWeatherCode((long) weathercode.get(index));
 
-            //PEGAR UMIDADE
+            // PEGAR A UMIIDADE
             JSONArray relativeHumidity = (JSONArray) hourly.get("relativehumidity_2m");
             long humidity = (long) relativeHumidity.get(index);
 
-            //PEGAR VELOCIDADE DO VENTO
+            // PEGAR A VELOCIDADE DO VENTO
             JSONArray windspeedData = (JSONArray) hourly.get("windspeed_10m");
             double windspeed = (double) windspeedData.get(index);
 
-            //CONSTUIR OS DADOS OBJETO EM JSON METEOROLOGICOPARA QUE TERMOS ACESSO AO FRONTEND
+            // CONTRUIR O OBJETO EM DADOS QUE FAZ ACESSO NO PARTE DO FRONTEND
             JSONObject weatherData = new JSONObject();
             weatherData.put("temperature", temperature);
             weatherData.put("weather_condition", weatherCondition);
@@ -85,110 +87,136 @@ public class TempoBack {
             weatherData.put("windspeed", windspeed);
 
             return weatherData;
-
-
-        }catch (Exception e){
+        }catch(Exception e){
             e.printStackTrace();
         }
 
         return null;
     }
 
-    public static JSONArray getLocationData(String locationName) {
-        locationName = locationName.replace(" ", "+");
+    //recupera coordenadas geográficas para determinado nome de local
+    public static JSONArray getLocationData(String locationName){
+        // replace any whitespace in location name to + to adhere to API's request format
+        locationName = locationName.replaceAll(" ", "+");
 
-        String urlString = "https://geocoding-api.open-meteo.com/v1/search?name=" + locationName + "&count=10&language=en&format=json";
+        // CONTRUIR URL DA API COM PARAMETROS DE LOCALIZÇÃO
+        String urlString = "https://geocoding-api.open-meteo.com/v1/search?name=" +
+                locationName + "&count=10&language=en&format=json";
 
-        try {
+        try{
+            // CHAMAR A API E OBTER A REPOSTA
             HttpURLConnection conn = fetchApiResponse(urlString);
 
-            // RETORNA STATUS DE CONEXÃO COM A API
-            if (conn.getResponseCode() != 200) {
-                System.out.println("Error: API não conectada");
+            // CEHCAR A RESPOTA DO STATUS
+            // 200 SIGNIFICA QUE FOI CONECTADO COM SUCESSO
+            if(conn.getResponseCode() != 200){
+                System.out.println("Error: Could not connect to API");
                 return null;
-            } else {
+            }else{
+                // ARMAZENAR OS DADOS DA API
                 StringBuilder resultJson = new StringBuilder();
-                Scanner scan = new Scanner(conn.getInputStream());
-                while (scan.hasNext()) {
-                    resultJson.append(scan.nextLine());
+                Scanner scanner = new Scanner(conn.getInputStream());
+
+                // LER E ARMAZENAR OS DADOS JSON RESULTANTES D CONTRUTOR DA STRING
+                while(scanner.hasNext()){
+                    resultJson.append(scanner.nextLine());
                 }
 
-                scan.close();
 
-                // FECHAR CONEXÃO COM A URL/API
+                scanner.close();
+
+                // FECHAR CONEXÃO COM URL
                 conn.disconnect();
 
-                // PARSE JSON E INTRODUZINDO UMA STRING JSON OBJ
+                // ANALISAR A STRING JSON EM UM OBJETO JSON
                 JSONParser parser = new JSONParser();
-                JSONObject resultJsonObj = (JSONObject) parser.parse(resultJson.toString());
+                JSONObject resultsJsonObj = (JSONObject) parser.parse(String.valueOf(resultJson));
 
-                JSONArray locationData = (JSONArray) resultJsonObj.get("results");
+                // OBTER A LISTA DE DADOS DE LOCALIZAÇÃO QUE API A PARTIR DO NOME DA LOCALIZAÇÃO
+                JSONArray locationData = (JSONArray) resultsJsonObj.get("results");
                 return locationData;
             }
-        } catch (Exception e) {
+
+        }catch(Exception e){
             e.printStackTrace();
-            return null;
         }
+
+        // NÃO FOI POSSIVEL ACHAR A LOCALIZAÇÃO
+        return null;
     }
 
-    private static HttpURLConnection fetchApiResponse(String urlString) {
-        try {
+    private static HttpURLConnection fetchApiResponse(String urlString){
+        try{
+            // TENTAR CRIAR A CONEXÃO
             URL url = new URL(urlString);
             HttpURLConnection conn = (HttpURLConnection) url.openConnection();
 
+            // DEFINIR METODO CONSEGUIR OBTE-LO
             conn.setRequestMethod("GET");
+
+            // CONEXÃO COM A API
             conn.connect();
             return conn;
-        } catch (IOException e) {
+        }catch(IOException e){
             e.printStackTrace();
-            return null;  // Adicionado para garantir que haja um retorno
         }
+
+        // NÃO FOI POSSIVEL FAZER A CONEXÃO
+        return null;
     }
 
     private static int findIndexOfCurrentTime(JSONArray timeList){
         String currentTime = getCurrentTime();
 
-        //percorrer A LISTA DE TEMPO E VER QUAL CORRESPONDE E HORA ATUAL
+        // PERCORRER A LISTA DE HORARIOS E VER QUAL DELES CORREPONDE AO NOSSO HORARIO ATUAL
         for(int i = 0; i < timeList.size(); i++){
             String time = (String) timeList.get(i);
             if(time.equalsIgnoreCase(currentTime)){
-                //RETORNA A INDEX
+                // RETORNO DA INDEX
                 return i;
             }
-
         }
 
         return 0;
     }
 
     public static String getCurrentTime(){
-        //PEAGR A DATA E HORARIO ATUAL
-        LocalDateTime currrentDateTime = LocalDateTime.now();
+        // OBTER DOADOS O HORA ATUAIS
+        LocalDateTime currentDateTime = LocalDateTime.now();
 
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyy-MM-dd'T'HH':00'");
+        // FORMATO DE DATA PARA 2023-09-02T00:00(POIS ASSIM É LIDO NA API)
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH':00'");
 
-        String formattedDateTime = currrentDateTime.format(formatter);
+        // FORMATA E MOSTRA HORA E DATA ATUAIS
+        String formattedDateTime = currentDateTime.format(formatter);
 
         return formattedDateTime;
     }
 
-    //CONVERTER O CODIGO METEOROLOGIOC PARA ALGO MAIS LEGIVEL
+    //CONVERTER O CODIGO METEOROLOGIOC PARA ALGO LEGIVEL
     private static String convertWeatherCode(long weathercode){
         String weatherCondition = "";
         if(weathercode == 0L){
-            //LIMPO
+            // LIMPO
             weatherCondition = "Clear";
-        }else if(weathercode <= 3L && weathercode > 0L){
-            //NUBLADO
+        }else if(weathercode > 0L && weathercode <= 3L){
+            // NUBALDO
             weatherCondition = "Cloudy";
-        }else if((weathercode >= 51L && weathercode <= 67L) || (weathercode >= 80L && weathercode <= 99L)){
-            //CHUVA
+        }else if((weathercode >= 51L && weathercode <= 67L)
+                || (weathercode >= 80L && weathercode <= 99L)){
+            // CHUVA
             weatherCondition = "Rain";
         }else if(weathercode >= 71L && weathercode <= 77L){
-            //NEVE
+            // NEVE
             weatherCondition = "Snow";
         }
 
         return weatherCondition;
     }
 }
+
+
+
+
+
+
